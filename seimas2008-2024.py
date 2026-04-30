@@ -16,7 +16,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 log = logging.getLogger(__name__)
 
 DB_FILE = "seimas.db"
-HTML_FILE = "seimas2008-2024.html"
+HTML_FILE = "index.html"
 STATIC_BASE = "https://www.vrk.lt/statiniai/puslapiai"
 REQUEST_DELAY = 1.0
 
@@ -431,6 +431,7 @@ def generate_html(conn: sqlite3.Connection):
         })
 
     members_list = sorted(members_dict.values(), key=lambda x: x["name"])
+    n = len(members_list)
     data_json = json.dumps(members_list, ensure_ascii=False, separators=(',', ':'))
 
     html = f'''<!DOCTYPE html>
@@ -441,82 +442,183 @@ def generate_html(conn: sqlite3.Connection):
 <title>Seimo narių turto deklaracijos</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
-  * {{ box-sizing: border-box; margin: 0; padding: 0; }}
-  body {{ font-family: 'Segoe UI', sans-serif; background: #f0f2f5; color: #222; }}
-  header {{ background: #1a3a5c; color: #fff; padding: 18px 32px; }}
-  header h1 {{ font-size: 1.4rem; font-weight: 600; }}
-  header p {{ font-size: 0.85rem; opacity: 0.75; margin-top: 4px; }}
-  .layout {{ display: flex; height: calc(100vh - 72px); }}
-  .sidebar {{ width: 320px; min-width: 220px; background: #fff; border-right: 1px solid #dde; display: flex; flex-direction: column; }}
-  .search-wrap {{ padding: 12px; border-bottom: 1px solid #eee; }}
-  .search-wrap input {{ width: 100%; padding: 8px 12px; border: 1px solid #ccd; border-radius: 6px; font-size: 0.9rem; outline: none; }}
-  .search-wrap input:focus {{ border-color: #1a3a5c; }}
-  .sort-wrap {{ padding: 6px 12px; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 8px; }}
-  .sort-wrap select {{ flex: 1; padding: 4px 6px; border: 1px solid #ccd; border-radius: 5px; font-size: 0.78rem; color: #444; background: #fff; outline: none; cursor: pointer; }}
-  .sort-wrap select:focus {{ border-color: #1a3a5c; }}
-  .member-count {{ font-size: 0.75rem; color: #aaa; white-space: nowrap; }}
-  .member-list {{ overflow-y: auto; flex: 1; }}
-  .member-item {{ padding: 10px 16px; cursor: pointer; border-bottom: 1px solid #f0f0f0; font-size: 0.88rem; transition: background 0.15s; }}
-  .member-item:hover {{ background: #e8f0fb; }}
-  .member-item.active {{ background: #1a3a5c; color: #fff; }}
-  .member-item .elections-badge {{ font-size: 0.72rem; color: #888; margin-top: 2px; }}
-  .member-item.active .elections-badge {{ color: #aac4e8; }}
-  .main {{ flex: 1; overflow-y: auto; padding: 24px 28px; }}
-  .placeholder {{ display: flex; align-items: center; justify-content: center; height: 100%; color: #aaa; font-size: 1rem; }}
-  .member-header {{ margin-bottom: 18px; }}
-  .member-header h2 {{ font-size: 1.25rem; color: #1a3a5c; }}
-  .member-header p {{ font-size: 0.82rem; color: #777; margin-top: 4px; }}
-  .table-wrap {{ overflow-x: auto; margin-bottom: 28px; }}
-  table {{ border-collapse: collapse; min-width: 600px; width: 100%; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 6px rgba(0,0,0,0.08); }}
-  thead tr {{ background: #1a3a5c; color: #fff; }}
-  th {{ padding: 10px 14px; font-size: 0.82rem; font-weight: 600; text-align: right; white-space: nowrap; }}
-  th:first-child {{ text-align: left; }}
-  th.year-link {{ cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }}
-  th.year-link:hover {{ background: #2a5a8c; }}
-  tbody tr {{ border-bottom: 1px solid #eef; transition: background 0.12s; }}
-  tbody tr:last-child {{ border-bottom: none; }}
-  tbody tr:hover {{ background: #e8f0fb; cursor: pointer; }}
-  tbody tr.selected {{ background: #d0e4ff; }}
-  td {{ padding: 9px 14px; font-size: 0.84rem; text-align: right; white-space: nowrap; }}
-  td:first-child {{ text-align: left; font-weight: 500; color: #1a3a5c; }}
-  .null-val {{ color: #bbb; }}
-  .click-hint {{ font-size: 0.75rem; color: #999; margin-bottom: 8px; }}
-  .delta-pos {{ color: #1a8a3a; font-size: 0.75rem; margin-left: 4px; }}
-  .delta-neg {{ color: #c0392b; font-size: 0.75rem; margin-left: 4px; }}
-  .delta-pct {{ color: #5570a0; font-size: 0.75rem; margin-left: 4px; }}
-  .chart-section {{ background: #fff; border-radius: 8px; box-shadow: 0 1px 6px rgba(0,0,0,0.08); padding: 20px; }}
-  .chart-section h3 {{ font-size: 1rem; color: #1a3a5c; margin-bottom: 14px; }}
-  .chart-container {{ position: relative; height: 300px; }}
+/* ── Bendra ── */
+* {{ box-sizing: border-box; margin: 0; padding: 0; }}
+body {{ font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif; background: #f0f2f5; color: #222; }}
+#m {{ display: none; }}
+
+/* ══════════════════════════════════════
+   DESKTOP  (#d)
+══════════════════════════════════════ */
+#d {{ height: 100vh; display: flex; flex-direction: column; }}
+#d header {{ background: #1a3a5c; color: #fff; padding: 18px 32px; flex-shrink: 0; }}
+#d header h1 {{ font-size: 1.4rem; font-weight: 600; }}
+#d header p {{ font-size: 0.85rem; opacity: 0.75; margin-top: 4px; }}
+#d .layout {{ display: flex; flex: 1; overflow: hidden; }}
+#d .sidebar {{ width: 320px; min-width: 220px; background: #fff; border-right: 1px solid #dde; display: flex; flex-direction: column; }}
+#d .search-wrap {{ padding: 12px; border-bottom: 1px solid #eee; }}
+#d .search-wrap input {{ width: 100%; padding: 8px 12px; border: 1px solid #ccd; border-radius: 6px; font-size: 0.9rem; outline: none; }}
+#d .search-wrap input:focus {{ border-color: #1a3a5c; }}
+#d .sort-wrap {{ padding: 6px 12px; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 8px; }}
+#d .sort-wrap select {{ flex: 1; padding: 4px 6px; border: 1px solid #ccd; border-radius: 5px; font-size: 0.78rem; color: #444; background: #fff; outline: none; cursor: pointer; }}
+#d .sort-wrap select:focus {{ border-color: #1a3a5c; }}
+#d .member-count {{ font-size: 0.75rem; color: #aaa; white-space: nowrap; }}
+#d .member-list {{ overflow-y: auto; flex: 1; }}
+#d .member-item {{ padding: 10px 16px; cursor: pointer; border-bottom: 1px solid #f0f0f0; font-size: 0.88rem; transition: background 0.15s; }}
+#d .member-item:hover {{ background: #e8f0fb; }}
+#d .member-item.active {{ background: #1a3a5c; color: #fff; }}
+#d .member-item .elections-badge {{ font-size: 0.72rem; color: #888; margin-top: 2px; }}
+#d .member-item.active .elections-badge {{ color: #aac4e8; }}
+#d .main {{ flex: 1; overflow-y: auto; padding: 24px 28px; }}
+#d .placeholder {{ display: flex; align-items: center; justify-content: center; height: 100%; color: #aaa; font-size: 1rem; }}
+#d .member-header {{ margin-bottom: 18px; }}
+#d .member-header h2 {{ font-size: 1.25rem; color: #1a3a5c; }}
+#d .member-header p {{ font-size: 0.82rem; color: #777; margin-top: 4px; }}
+#d .table-wrap {{ overflow-x: auto; margin-bottom: 28px; }}
+#d table {{ border-collapse: collapse; min-width: 600px; width: 100%; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 6px rgba(0,0,0,0.08); }}
+#d thead tr {{ background: #1a3a5c; color: #fff; }}
+#d th {{ padding: 10px 14px; font-size: 0.82rem; font-weight: 600; text-align: right; white-space: nowrap; }}
+#d th:first-child {{ text-align: left; }}
+#d th.year-link {{ cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }}
+#d th.year-link:hover {{ background: #2a5a8c; }}
+#d tbody tr {{ border-bottom: 1px solid #eef; transition: background 0.12s; }}
+#d tbody tr:last-child {{ border-bottom: none; }}
+#d tbody tr:hover {{ background: #e8f0fb; cursor: pointer; }}
+#d tbody tr.selected {{ background: #d0e4ff; }}
+#d td {{ padding: 9px 14px; font-size: 0.84rem; text-align: right; white-space: nowrap; }}
+#d td:first-child {{ text-align: left; font-weight: 500; color: #1a3a5c; }}
+#d .null-val {{ color: #bbb; }}
+#d .click-hint {{ font-size: 0.75rem; color: #999; margin-bottom: 8px; }}
+#d .delta-pos {{ color: #1a8a3a; font-size: 0.75rem; margin-left: 4px; }}
+#d .delta-neg {{ color: #c0392b; font-size: 0.75rem; margin-left: 4px; }}
+#d .delta-pct {{ color: #5570a0; font-size: 0.75rem; margin-left: 4px; }}
+#d .chart-section {{ background: #fff; border-radius: 8px; box-shadow: 0 1px 6px rgba(0,0,0,0.08); padding: 20px; }}
+#d .chart-section h3 {{ font-size: 1rem; color: #1a3a5c; margin-bottom: 14px; }}
+#d .chart-container {{ position: relative; height: 300px; }}
+
+/* ══════════════════════════════════════
+   MOBILE  (#m)
+══════════════════════════════════════ */
+#m {{ -webkit-tap-highlight-color: transparent; overflow-x: hidden; height: 100dvh; display: flex; flex-direction: column; }}
+#m * {{ box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }}
+#m header {{ background: #1a3a5c; color: #fff; padding: 14px 16px; position: sticky; top: 0; z-index: 100; display: flex; align-items: center; gap: 10px; min-height: 56px; flex-shrink: 0; }}
+#m header h1 {{ font-size: 1rem; font-weight: 600; flex: 1; line-height: 1.3; }}
+#m header p {{ font-size: 0.72rem; opacity: 0.7; margin-top: 2px; }}
+#m .back-btn {{ display: none; background: rgba(255,255,255,0.15); border: none; color: #fff; font-size: 1.3rem; width: 38px; height: 38px; border-radius: 8px; cursor: pointer; align-items: center; justify-content: center; flex-shrink: 0; }}
+#m .back-btn.visible {{ display: flex; }}
+#m #m_listView {{ display: flex; flex-direction: column; flex: 1; overflow: hidden; }}
+#m #m_detailView {{ display: none; flex: 1; overflow-y: auto; }}
+#m .search-bar {{ padding: 10px 12px; background: #fff; border-bottom: 1px solid #e0e3e8; display: flex; gap: 8px; flex-shrink: 0; }}
+#m .search-bar input {{ flex: 1; padding: 9px 12px; border: 1.5px solid #ccd; border-radius: 8px; font-size: 1rem; outline: none; background: #f7f8fa; }}
+#m .search-bar input:focus {{ border-color: #1a3a5c; background: #fff; }}
+#m .sort-bar {{ padding: 6px 12px; background: #fff; border-bottom: 1px solid #e0e3e8; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }}
+#m .sort-bar select {{ flex: 1; padding: 6px 8px; border: 1.5px solid #ccd; border-radius: 8px; font-size: 0.82rem; color: #444; background: #fff; outline: none; }}
+#m .sort-bar select:focus {{ border-color: #1a3a5c; }}
+#m .member-count {{ font-size: 0.75rem; color: #999; white-space: nowrap; }}
+#m .member-list {{ overflow-y: auto; flex: 1; }}
+#m .member-item {{ padding: 13px 16px; border-bottom: 1px solid #ebebf0; background: #fff; cursor: pointer; display: flex; justify-content: space-between; align-items: center; -webkit-user-select: none; user-select: none; }}
+#m .member-item:active {{ background: #e8f0fb; }}
+#m .member-item-left .name {{ font-size: 0.93rem; font-weight: 500; }}
+#m .member-item-left .years {{ font-size: 0.75rem; color: #999; margin-top: 2px; }}
+#m .member-arrow {{ color: #c0c8d8; font-size: 1rem; flex-shrink: 0; margin-left: 8px; }}
+#m .detail-inner {{ padding: 0 0 32px; }}
+#m .detail-hero {{ background: #fff; padding: 16px; border-bottom: 1px solid #e8ebf0; margin-bottom: 12px; }}
+#m .detail-hero h2 {{ font-size: 1.1rem; color: #1a3a5c; font-weight: 700; }}
+#m .detail-hero p {{ font-size: 0.8rem; color: #888; margin-top: 4px; }}
+#m .year-cards {{ padding: 0 12px; display: flex; flex-direction: column; gap: 12px; }}
+#m .year-card {{ background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }}
+#m .year-card-header {{ background: #1a3a5c; color: #fff; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; }}
+#m .year-card-header .year-label {{ font-size: 1rem; font-weight: 700; }}
+#m .year-card-header .party-label {{ font-size: 0.75rem; opacity: 0.75; text-align: right; max-width: 55%; line-height: 1.3; }}
+#m .year-card-header a {{ color: #7ec8ff; font-size: 0.75rem; text-decoration: none; border: 1px solid rgba(126,200,255,0.4); padding: 3px 7px; border-radius: 5px; margin-left: 8px; flex-shrink: 0; }}
+#m .field-row {{ display: flex; justify-content: space-between; align-items: flex-start; padding: 8px 14px; border-bottom: 1px solid #f2f4f8; cursor: pointer; transition: background 0.1s; }}
+#m .field-row:last-child {{ border-bottom: none; }}
+#m .field-row:active {{ background: #eef3fb; }}
+#m .field-row.selected-field {{ background: #ddeeff; }}
+#m .field-name {{ font-size: 0.78rem; color: #555; flex: 1; padding-right: 10px; line-height: 1.4; }}
+#m .field-value {{ font-size: 0.85rem; font-weight: 600; color: #1a3a5c; text-align: right; white-space: nowrap; }}
+#m .field-value.null-val {{ color: #bbb; font-weight: 400; }}
+#m .delta-pos {{ color: #1a8a3a; font-size: 0.72rem; display: block; text-align: right; }}
+#m .delta-neg {{ color: #c0392b; font-size: 0.72rem; display: block; text-align: right; }}
+#m .delta-pct {{ color: #5570a0; font-size: 0.72rem; display: block; text-align: right; }}
+#m .chart-section {{ margin: 12px; background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); padding: 14px; }}
+#m .chart-section h3 {{ font-size: 0.88rem; color: #1a3a5c; margin-bottom: 12px; line-height: 1.4; }}
+#m .chart-placeholder {{ display: flex; align-items: center; justify-content: center; height: 140px; color: #bbb; font-size: 0.85rem; border: 2px dashed #e0e0e0; border-radius: 8px; text-align: center; padding: 12px; }}
+#m .chart-container {{ position: relative; height: 240px; }}
+#m .empty-state {{ text-align: center; padding: 48px 24px; color: #aaa; font-size: 0.9rem; }}
+
+/* ── Perjungimas pagal ekrano plotį ── */
+@media (max-width: 767px) {{
+  #d {{ display: none !important; }}
+  #m {{ display: flex !important; }}
+}}
 </style>
 </head>
 <body>
-<header>
-  <h1>Seimo narių turto deklaracijos</h1>
-  <p>Rinkimai 2008–2024 &bull; {len(members_list)} unikalių narių</p>
-</header>
-<div class="layout">
-  <aside class="sidebar">
-    <div class="search-wrap">
-      <input type="text" id="searchInput" placeholder="Ieškoti nario..." autocomplete="off">
+
+<!-- ══ DESKTOP ══ -->
+<div id="d">
+  <header>
+    <h1>Seimo narių turto deklaracijos</h1>
+    <p>Rinkimai 2008&ndash;2024 &bull; {n} nariai &bull; 703 deklaracijos</p>
+  </header>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="search-wrap">
+        <input type="text" id="d_search" placeholder="Ieškoti nario..." autocomplete="off">
+      </div>
+      <div class="sort-wrap">
+        <select id="d_sort">
+          <option value="name">Pagal pavardę</option>
+          <option value="mandatory_property">Privalomas registruoti turtas</option>
+          <option value="securities">Vertybiniai popieriai ir kt.</option>
+          <option value="monetary_funds">Piniginės lėšos</option>
+          <option value="loans_given">Suteiktos paskolos</option>
+          <option value="loans_received">Gautos paskolos</option>
+          <option value="total_income">Bendros pajamos</option>
+          <option value="income_tax">Pajamų mokestis</option>
+        </select>
+        <span class="member-count" id="d_count"></span>
+      </div>
+      <div class="member-list" id="d_list"></div>
+    </aside>
+    <main class="main" id="d_main">
+      <div class="placeholder">&#8592; Pasirinkite Seimo narį iš sąrašo</div>
+    </main>
+  </div>
+</div>
+
+<!-- ══ MOBILE ══ -->
+<div id="m">
+  <header>
+    <button class="back-btn" id="m_back">&#8592;</button>
+    <div style="flex:1">
+      <h1 id="m_title">Seimo narių turto deklaracijos</h1>
+      <p id="m_sub">Rinkimai 2008&ndash;2024</p>
     </div>
-    <div class="sort-wrap">
-      <select id="sortSelect">
-        <option value="name">Pagal pavardę</option>
-        <option value="mandatory_property">Privalomas registruoti turtas</option>
-        <option value="securities">Vertybiniai popieriai ir kt.</option>
+  </header>
+  <div id="m_listView">
+    <div class="search-bar">
+      <input type="search" id="m_search" placeholder="Ieškoti nario..." autocomplete="off" enterkeyhint="search">
+    </div>
+    <div class="sort-bar">
+      <select id="m_sort">
+        <option value="name">Rikiuoti pagal pavardę</option>
+        <option value="mandatory_property">Privalomas turtas</option>
+        <option value="securities">Vertybiniai popieriai</option>
         <option value="monetary_funds">Piniginės lėšos</option>
         <option value="loans_given">Suteiktos paskolos</option>
         <option value="loans_received">Gautos paskolos</option>
         <option value="total_income">Bendros pajamos</option>
         <option value="income_tax">Pajamų mokestis</option>
       </select>
-      <span class="member-count" id="memberCount"></span>
+      <span class="member-count" id="m_count"></span>
     </div>
-    <div class="member-list" id="memberList"></div>
-  </aside>
-  <main class="main" id="main">
-    <div class="placeholder">← Pasirinkite Seimo narį iš sąrašo</div>
-  </main>
+    <div class="member-list" id="m_list"></div>
+  </div>
+  <div id="m_detailView">
+    <div class="detail-inner" id="m_detail"></div>
+  </div>
 </div>
 
 <script>
@@ -532,24 +634,18 @@ const FIELDS = [
   {{ key: 'income_tax',         lt: 'Pajamų mokestis', percentOf: 'total_income' }},
 ];
 
-let currentChart = null;
-let currentSort = 'name';
-
+/* ── Bendros pagalbinės funkcijos ── */
 function lastName(name) {{
-  const parts = name.trim().split(/[ ]+/);
-  return parts[parts.length - 1];
+  const p = name.trim().split(/\\s+/);
+  return p[p.length - 1];
 }}
-
 function maxVal(member, key) {{
   const vals = member.declarations.map(d => d[key]).filter(v => v !== null && v !== undefined);
   return vals.length ? Math.max(...vals) : null;
 }}
-
 function sortedMembers(data, sort) {{
   const arr = [...data];
-  if (sort === 'name') {{
-    return arr.sort((a, b) => lastName(a.name).localeCompare(lastName(b.name), 'lt', {{sensitivity: 'base'}}));
-  }}
+  if (sort === 'name') return arr.sort((a, b) => lastName(a.name).localeCompare(lastName(b.name), 'lt', {{sensitivity: 'base'}}));
   return arr.sort((a, b) => {{
     const va = maxVal(a, sort), vb = maxVal(b, sort);
     if (va === null && vb === null) return 0;
@@ -558,152 +654,311 @@ function sortedMembers(data, sort) {{
     return vb - va;
   }});
 }}
-
 function fmt(v) {{
-  if (v === null || v === undefined) return '<span class="null-val">—</span>';
+  if (v === null || v === undefined) return null;
   return Number(v).toLocaleString('lt-LT', {{minimumFractionDigits: 2, maximumFractionDigits: 2}}) + ' €';
 }}
-
 function fmtDelta(curr, prev) {{
   if (curr === null || curr === undefined || prev === null || prev === undefined) return '';
   const d = curr - prev;
   if (d === 0) return '';
   const sign = d > 0 ? '+' : '';
   const cls = d > 0 ? 'delta-pos' : 'delta-neg';
-  const str = sign + Number(d).toLocaleString('lt-LT', {{minimumFractionDigits: 2, maximumFractionDigits: 2}}) + ' €';
-  return `<span class="${{cls}}">(${{str}})</span>`;
+  return `<span class="${{cls}}">${{sign}}${{Number(d).toLocaleString('lt-LT', {{minimumFractionDigits: 2, maximumFractionDigits: 2}})}} €</span>`;
 }}
-
 function fmtPercent(v, base) {{
-  if (v === null || v === undefined || base === null || base === undefined || base === 0) return '';
-  const pct = (v / base) * 100;
-  return `<span class="delta-pct">(${{pct.toFixed(1)}}%)</span>`;
+  if (v === null || v === undefined || !base) return '';
+  return `<span class="delta-pct">${{(v / base * 100).toFixed(1)}}%</span>`;
 }}
 
-function renderMemberList(filter) {{
-  const list = document.getElementById('memberList');
-  const count = document.getElementById('memberCount');
-  const lc = (filter || '').toLowerCase();
-  const filtered = lc ? DATA.filter(m => m.name.toLowerCase().includes(lc)) : DATA;
-  const sorted = sortedMembers(filtered, currentSort);
-  count.textContent = sorted.length;
-  list.innerHTML = '';
-  sorted.forEach(m => {{
-    const years = m.declarations.map(d => d.election_year).sort();
-    const div = document.createElement('div');
-    div.className = 'member-item';
-    div.innerHTML = `<div>${{m.name}}</div><div class="elections-badge">Rinkimai: ${{years.join(', ')}}</div>`;
-    div.addEventListener('click', () => selectMember(m, div));
-    list.appendChild(div);
-  }});
+/* viewport fix tik tikram mobiliajam */
+if (window.matchMedia('(max-width: 767px)').matches) {{
+  document.querySelector('meta[name=viewport]').content =
+    'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
 }}
 
-function selectMember(member, el) {{
-  document.querySelectorAll('.member-item').forEach(e => e.classList.remove('active'));
-  el.classList.add('active');
-  renderMember(member);
-}}
+/* ════════════════════════════════════
+   DESKTOP
+════════════════════════════════════ */
+{{
+  let dChart = null;
+  let dSort = 'name';
 
-function renderMember(member) {{
-  const main = document.getElementById('main');
-  const decs = member.declarations.sort((a, b) => a.election_year - b.election_year);
-  const years = decs.map(d => d.election_year);
-
-  const tableHead = '<th>Rodiklis</th>' + decs.map(d =>
-    d.turto_url
-      ? `<th class="year-link" data-url="${{d.turto_url}}">${{d.election_year}}</th>`
-      : `<th>${{d.election_year}}</th>`
-  ).join('');
-
-  const multiKadencija = decs.length > 1;
-  let tableBody = '';
-
-  FIELDS.forEach(field => {{
-    const vals = decs.map(d => d[field.key]);
-    tableBody += `<tr data-field="${{field.key}}" data-label="${{field.lt}}">
-      <td>${{field.lt}}</td>
-      ${{vals.map((v, i) => {{
-        let extra = '';
-        if (field.percentOf) {{
-          extra = fmtPercent(v, decs[i][field.percentOf]);
-        }} else if (multiKadencija && i > 0) {{
-          extra = fmtDelta(v, vals[i - 1]);
-        }}
-        return `<td>${{fmt(v)}}${{extra}}</td>`;
-      }}).join('')}}
-    </tr>`;
-  }});
-
-  const parties = [...new Set(decs.map(d => d.party_name).filter(Boolean))].join(', ');
-
-  main.innerHTML = `
-    <div class="member-header">
-      <h2>${{member.name}}</h2>
-      ${{parties ? `<p>Partija(-os): ${{parties}}</p>` : ''}}
-    </div>
-    <p class="click-hint">Spustelėkite ant eilutės, kad pamatytumėte grafiką</p>
-    <div class="table-wrap">
-      <table>
-        <thead><tr>${{tableHead}}</tr></thead>
-        <tbody id="decTable">${{tableBody}}</tbody>
-      </table>
-    </div>
-    <div class="chart-section">
-      <h3 id="chartTitle">Pasirinkite rodiklį grafikui</h3>
-      <div class="chart-container"><canvas id="myChart"></canvas></div>
-    </div>
-  `;
-
-  if (currentChart) {{ currentChart.destroy(); currentChart = null; }}
-
-  document.querySelectorAll('th.year-link').forEach(th => {{
-    th.addEventListener('click', () => window.open(th.dataset.url, '_blank'));
-  }});
-
-  document.querySelectorAll('#decTable tr').forEach(tr => {{
-    tr.addEventListener('click', () => {{
-      document.querySelectorAll('#decTable tr').forEach(r => r.classList.remove('selected'));
-      tr.classList.add('selected');
-      showChart(years, decs.map(d => d[tr.dataset.field]), tr.dataset.label, member.name);
+  function dRenderList(filter) {{
+    const list = document.getElementById('d_list');
+    const lc = (filter || '').toLowerCase();
+    const filtered = lc ? DATA.filter(m => m.name.toLowerCase().includes(lc)) : DATA;
+    const sorted = sortedMembers(filtered, dSort);
+    document.getElementById('d_count').textContent = sorted.length;
+    list.innerHTML = '';
+    sorted.forEach(m => {{
+      const years = m.declarations.map(d => d.election_year).sort();
+      const div = document.createElement('div');
+      div.className = 'member-item';
+      div.innerHTML = `<div>${{m.name}}</div><div class="elections-badge">Rinkimai: ${{years.join(', ')}}</div>`;
+      div.addEventListener('click', () => {{
+        document.querySelectorAll('#d_list .member-item').forEach(e => e.classList.remove('active'));
+        div.classList.add('active');
+        dRenderMember(m);
+      }});
+      list.appendChild(div);
     }});
-  }});
-}}
+  }}
 
-function showChart(years, vals, label, memberName) {{
-  document.getElementById('chartTitle').textContent = label + ' — ' + memberName;
-  if (currentChart) {{ currentChart.destroy(); }}
-  const ctx = document.getElementById('myChart').getContext('2d');
-  currentChart = new Chart(ctx, {{
-    type: 'bar',
-    data: {{
-      labels: years.map(String),
-      datasets: [{{
-        label: label,
-        data: vals.map(v => (v === null || v === undefined) ? 0 : v),
-        backgroundColor: years.map((_, i) => `hsla(${{200 + i * 30}}, 65%, 48%, 0.78)`),
-        borderColor: years.map((_, i) => `hsla(${{200 + i * 30}}, 65%, 35%, 1)`),
-        borderWidth: 1.5,
-        borderRadius: 4,
-      }}]
-    }},
-    options: {{
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {{
-        legend: {{ display: false }},
-        tooltip: {{ callbacks: {{ label: ctx => ' ' + ctx.raw.toLocaleString('lt-LT', {{minimumFractionDigits: 2}}) + ' €' }} }}
+  function dRenderMember(member) {{
+    const main = document.getElementById('d_main');
+    const decs = [...member.declarations].sort((a, b) => a.election_year - b.election_year);
+    const years = decs.map(d => d.election_year);
+    const multi = decs.length > 1;
+
+    const tableHead = '<th>Rodiklis</th>' + decs.map(d =>
+      d.turto_url
+        ? `<th class="year-link" data-url="${{d.turto_url}}">${{d.election_year}}</th>`
+        : `<th>${{d.election_year}}</th>`
+    ).join('');
+
+    let tableBody = '';
+    FIELDS.forEach(field => {{
+      const vals = decs.map(d => d[field.key]);
+      tableBody += `<tr data-field="${{field.key}}" data-label="${{field.lt}}">
+        <td>${{field.lt}}</td>
+        ${{vals.map((v, i) => {{
+          const extra = field.percentOf
+            ? fmtPercent(v, decs[i][field.percentOf])
+            : (multi && i > 0 ? fmtDelta(v, vals[i - 1]) : '');
+          const f = fmt(v);
+          return `<td>${{f !== null ? f : '<span class="null-val">—</span>'}}</td>`
+            .replace('</td>', extra + '</td>');
+        }}).join('')}}
+      </tr>`;
+    }});
+
+    const parties = [...new Set(decs.map(d => d.party_name).filter(Boolean))].join(', ');
+    main.innerHTML = `
+      <div class="member-header">
+        <h2>${{member.name}}</h2>
+        ${{parties ? `<p>Partija(-os): ${{parties}}</p>` : ''}}
+      </div>
+      <p class="click-hint">Spustelėkite ant eilutės, kad pamatytumėte grafiką</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>${{tableHead}}</tr></thead>
+          <tbody id="d_decTable">${{tableBody}}</tbody>
+        </table>
+      </div>
+      <div class="chart-section">
+        <h3 id="d_chartTitle">Pasirinkite rodiklį grafikui</h3>
+        <div class="chart-container"><canvas id="d_chart"></canvas></div>
+      </div>
+    `;
+
+    if (dChart) {{ dChart.destroy(); dChart = null; }}
+    document.querySelectorAll('th.year-link').forEach(th =>
+      th.addEventListener('click', () => window.open(th.dataset.url, '_blank'))
+    );
+    document.querySelectorAll('#d_decTable tr').forEach(tr =>
+      tr.addEventListener('click', () => {{
+        document.querySelectorAll('#d_decTable tr').forEach(r => r.classList.remove('selected'));
+        tr.classList.add('selected');
+        dShowChart(years, decs.map(d => d[tr.dataset.field]), tr.dataset.label, member.name);
+      }})
+    );
+  }}
+
+  function dShowChart(years, vals, label, memberName) {{
+    document.getElementById('d_chartTitle').textContent = label + ' — ' + memberName;
+    if (dChart) dChart.destroy();
+    dChart = new Chart(document.getElementById('d_chart').getContext('2d'), {{
+      type: 'bar',
+      data: {{
+        labels: years.map(String),
+        datasets: [{{
+          label: label,
+          data: vals.map(v => v ?? 0),
+          backgroundColor: years.map((_, i) => `hsla(${{200 + i * 30}}, 65%, 48%, 0.78)`),
+          borderColor: years.map((_, i) => `hsla(${{200 + i * 30}}, 65%, 35%, 1)`),
+          borderWidth: 1.5, borderRadius: 4,
+        }}]
       }},
-      scales: {{ y: {{ beginAtZero: true, ticks: {{ callback: v => v.toLocaleString('lt-LT') + ' €' }} }} }}
-    }}
+      options: {{
+        responsive: true, maintainAspectRatio: false,
+        plugins: {{
+          legend: {{ display: false }},
+          tooltip: {{ callbacks: {{ label: c => ' ' + c.raw.toLocaleString('lt-LT', {{minimumFractionDigits: 2}}) + ' €' }} }}
+        }},
+        scales: {{ y: {{ beginAtZero: true, ticks: {{ callback: v => v.toLocaleString('lt-LT') + ' €' }} }} }}
+      }}
+    }});
+  }}
+
+  dRenderList('');
+  document.getElementById('d_search').addEventListener('input', e => dRenderList(e.target.value));
+  document.getElementById('d_sort').addEventListener('change', e => {{
+    dSort = e.target.value;
+    dRenderList(document.getElementById('d_search').value);
   }});
 }}
 
-renderMemberList('');
-document.getElementById('searchInput').addEventListener('input', e => renderMemberList(e.target.value));
-document.getElementById('sortSelect').addEventListener('change', e => {{
-  currentSort = e.target.value;
-  renderMemberList(document.getElementById('searchInput').value);
-}});
+/* ════════════════════════════════════
+   MOBILE
+════════════════════════════════════ */
+{{
+  let mChart = null;
+  let mSort = 'name';
+  let mCurrentMember = null;
+
+  function mRenderList(filter) {{
+    const list = document.getElementById('m_list');
+    const lc = (filter || '').toLowerCase();
+    const filtered = lc ? DATA.filter(m => m.name.toLowerCase().includes(lc)) : DATA;
+    const sorted = sortedMembers(filtered, mSort);
+    document.getElementById('m_count').textContent = sorted.length + ' nariai(-ių)';
+    if (!sorted.length) {{
+      list.innerHTML = '<div class="empty-state">Nerasta narių pagal paiešką</div>';
+      return;
+    }}
+    list.innerHTML = '';
+    sorted.forEach(m => {{
+      const years = [...new Set(m.declarations.map(d => d.election_year))].sort();
+      const div = document.createElement('div');
+      div.className = 'member-item';
+      div.innerHTML = `
+        <div class="member-item-left">
+          <div class="name">${{m.name}}</div>
+          <div class="years">Rinkimai: ${{years.join(', ')}}</div>
+        </div>
+        <span class="member-arrow">&#8250;</span>
+      `;
+      div.addEventListener('click', () => mShowDetail(m));
+      list.appendChild(div);
+    }});
+  }}
+
+  function mShowDetail(member) {{
+    mCurrentMember = member;
+    mRenderDetail(member);
+    document.getElementById('m_listView').style.display = 'none';
+    document.getElementById('m_detailView').style.display = 'block';
+    document.getElementById('m_detailView').scrollTop = 0;
+    document.getElementById('m_back').classList.add('visible');
+    document.getElementById('m_title').textContent = member.name;
+    document.getElementById('m_sub').style.display = 'none';
+    if (mChart) {{ mChart.destroy(); mChart = null; }}
+  }}
+
+  function mShowList() {{
+    document.getElementById('m_listView').style.display = 'flex';
+    document.getElementById('m_detailView').style.display = 'none';
+    document.getElementById('m_back').classList.remove('visible');
+    document.getElementById('m_title').textContent = 'Seimo narių turto deklaracijos';
+    document.getElementById('m_sub').style.display = '';
+    if (mChart) {{ mChart.destroy(); mChart = null; }}
+  }}
+
+  function mRenderDetail(member) {{
+    const decs = [...member.declarations].sort((a, b) => a.election_year - b.election_year);
+    const multi = decs.length > 1;
+    const parties = [...new Set(decs.map(d => d.party_name).filter(Boolean))].join(', ');
+
+    let cardsHtml = '';
+    decs.forEach((dec, idx) => {{
+      const prev = idx > 0 ? decs[idx - 1] : null;
+      let fieldsHtml = '';
+      FIELDS.forEach(field => {{
+        const v = dec[field.key];
+        const f = fmt(v);
+        const extra = field.percentOf
+          ? fmtPercent(v, dec[field.percentOf])
+          : (multi && prev ? fmtDelta(v, prev[field.key]) : '');
+        fieldsHtml += `
+          <div class="field-row" data-field="${{field.key}}" data-label="${{field.lt}}">
+            <div class="field-name">${{field.lt}}</div>
+            <div class="field-value${{f === null ? ' null-val' : ''}}">${{f !== null ? f : '—'}}${{extra}}</div>
+          </div>`;
+      }});
+      const link = dec.turto_url
+        ? `<a href="${{dec.turto_url}}" target="_blank" rel="noopener">Originalas &#8599;</a>`
+        : '';
+      cardsHtml += `
+        <div class="year-card">
+          <div class="year-card-header">
+            <span class="year-label">${{dec.election_year}}</span>
+            <span class="party-label">${{dec.party_name || ''}}</span>
+            ${{link}}
+          </div>
+          <div class="year-card-body">${{fieldsHtml}}</div>
+        </div>`;
+    }});
+
+    document.getElementById('m_detail').innerHTML = `
+      <div class="detail-hero">
+        <h2>${{member.name}}</h2>
+        ${{parties ? `<p>Partija(-os): ${{parties}}</p>` : ''}}
+      </div>
+      <div class="year-cards">${{cardsHtml}}</div>
+      <div class="chart-section" id="m_chartSection">
+        <h3 id="m_chartTitle">Paspauskite ant lauko, kad pamatytumėte grafiką</h3>
+        <div class="chart-placeholder" id="m_chartPh">&#128196; Pasirinkite rodiklį iš kortelių aukščiau</div>
+        <div class="chart-container" id="m_chartBox" style="display:none"><canvas id="m_chart"></canvas></div>
+      </div>
+    `;
+
+    document.getElementById('m_detail').addEventListener('click', e => {{
+      const row = e.target.closest('.field-row');
+      if (!row) return;
+      document.querySelectorAll('#m_detail .field-row').forEach(r => r.classList.remove('selected-field'));
+      row.classList.add('selected-field');
+      const decs2 = [...mCurrentMember.declarations].sort((a, b) => a.election_year - b.election_year);
+      mShowChart(
+        decs2.map(d => d.election_year),
+        decs2.map(d => d[row.dataset.field]),
+        row.dataset.label,
+        mCurrentMember.name
+      );
+      setTimeout(() => document.getElementById('m_chartSection')
+        .scrollIntoView({{behavior: 'smooth', block: 'nearest'}}), 100);
+    }});
+  }}
+
+  function mShowChart(years, vals, label, memberName) {{
+    document.getElementById('m_chartTitle').textContent = label + ' — ' + memberName;
+    document.getElementById('m_chartPh').style.display = 'none';
+    document.getElementById('m_chartBox').style.display = 'block';
+    if (mChart) mChart.destroy();
+    mChart = new Chart(document.getElementById('m_chart').getContext('2d'), {{
+      type: 'bar',
+      data: {{
+        labels: years.map(String),
+        datasets: [{{
+          label: label,
+          data: vals.map(v => v ?? 0),
+          backgroundColor: years.map((_, i) => `hsla(${{200 + i * 30}}, 65%, 48%, 0.82)`),
+          borderColor: years.map((_, i) => `hsla(${{200 + i * 30}}, 65%, 35%, 1)`),
+          borderWidth: 1.5, borderRadius: 5,
+        }}]
+      }},
+      options: {{
+        responsive: true, maintainAspectRatio: false,
+        plugins: {{
+          legend: {{ display: false }},
+          tooltip: {{ callbacks: {{ label: c => ' ' + c.raw.toLocaleString('lt-LT', {{minimumFractionDigits: 2}}) + ' €' }} }}
+        }},
+        scales: {{
+          y: {{ beginAtZero: true, ticks: {{ callback: v => v.toLocaleString('lt-LT') + ' €', maxTicksLimit: 6, font: {{size: 11}} }} }},
+          x: {{ ticks: {{ font: {{size: 12}} }} }}
+        }}
+      }}
+    }});
+  }}
+
+  document.getElementById('m_back').addEventListener('click', mShowList);
+  mRenderList('');
+  document.getElementById('m_search').addEventListener('input', e => mRenderList(e.target.value));
+  document.getElementById('m_sort').addEventListener('change', e => {{
+    mSort = e.target.value;
+    mRenderList(document.getElementById('m_search').value);
+  }});
+}}
 </script>
 </body>
 </html>
@@ -712,7 +967,7 @@ document.getElementById('sortSelect').addEventListener('change', e => {{
     with open(HTML_FILE, 'w', encoding='utf-8') as f:
         f.write(html)
 
-    log.info(f"Sugeneruota {HTML_FILE} su {len(members_list)} unikaliais nariais")
+    log.info(f"Sugeneruota {HTML_FILE} su {n} unikaliais nariais (desktop + mobile)")
 
 
 def main():
