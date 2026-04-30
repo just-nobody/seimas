@@ -10,7 +10,7 @@ from typing import Optional
 from urllib.parse import parse_qs, urljoin
 
 import requests
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, NavigableString
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s", datefmt="%H:%M:%S")
 log = logging.getLogger(__name__)
@@ -19,6 +19,26 @@ DB_FILE = "seimas.db"
 HTML_FILE = "index.html"
 STATIC_BASE = "https://www.vrk.lt/statiniai/puslapiai"
 REQUEST_DELAY = 1.0
+
+MANUAL_MEMBERS = {
+    2008: [
+        "https://www.vrk.lt/statiniai/puslapiai/rinkimai/396/Kandidatai/Kandidatas19310/Kandidato19310Deklaracijos.html",
+        "https://www.vrk.lt/statiniai/puslapiai/rinkimai/406_lt/Kandidatai/Kandidatas26261/Kandidato26261Deklaracijos.html",
+        "https://www.vrk.lt/statiniai/puslapiai/rinkimai/406_lt/Kandidatai/Kandidatas26249/Kandidato26249Deklaracijos.html",
+        "https://www.vrk.lt/statiniai/puslapiai/rinkimai/412_lt/Kandidatai/Kandidatas66343/Kandidato66343Deklaracijos.html",
+    ],
+    2012: [
+        "https://www.vrk.lt/statiniai/puslapiai/rinkimai/459_lt/Kandidatai/Kandidatas87929/Kandidato87929Deklaracijos.html",
+        "https://www.vrk.lt/statiniai/puslapiai/rinkimai/448_lt/Kandidatai/Kandidatas87277/Kandidato87277Deklaracijos.html",
+    ],
+    2016: [
+        "https://www.vrk.lt/2017-seim-sav/rezultatai?srcUrl=/rinkimai/748/rnk984/kandidatai/lrsKandidatasTurtas_rkndId-1106688.html",
+        "https://www.vrk.lt/2018-09-16_nauji-rinkimai-i-seima/rezultatai?srcUrl=/rinkimai/826/rnk1064/kandidatai/lrsKandidatasTurtas_rkndId-2399846.html",
+        "https://www.vrk.lt/2019-seim/rezultatai?srcUrl=/rinkimai/1066/rnk1388/kandidatai/lrsKandidatasTurtas_rkndId-2415632.html",
+        "https://www.vrk.lt/2019-seim/rezultatai?srcUrl=/rinkimai/1066/rnk1388/kandidatai/lrsKandidatasTurtas_rkndId-2415642.html",
+        "https://www.vrk.lt/2019-seim/rezultatai?srcUrl=/rinkimai/1066/rnk1388/kandidatai/lrsKandidatasTurtas_rkndId-2415641.html",
+    ],
+}
 
 ELECTIONS = {
     2024: {
@@ -656,7 +676,7 @@ function sortedMembers(data, sort) {{
 }}
 function fmt(v) {{
   if (v === null || v === undefined) return null;
-  return Number(v).toLocaleString('lt-LT', {{minimumFractionDigits: 2, maximumFractionDigits: 2}}) + ' €';
+  return Number(v).toLocaleString('lt-LT', {{minimumFractionDigits: 0, maximumFractionDigits: 0}}) + ' €';
 }}
 function fmtDelta(curr, prev) {{
   if (curr === null || curr === undefined || prev === null || prev === undefined) return '';
@@ -664,11 +684,11 @@ function fmtDelta(curr, prev) {{
   if (d === 0) return '';
   const sign = d > 0 ? '+' : '';
   const cls = d > 0 ? 'delta-pos' : 'delta-neg';
-  return `<span class="${{cls}}">${{sign}}${{Number(d).toLocaleString('lt-LT', {{minimumFractionDigits: 2, maximumFractionDigits: 2}})}} €</span>`;
+  return `<span class="${{cls}}">${{sign}}${{Number(d).toLocaleString('lt-LT', {{minimumFractionDigits: 0, maximumFractionDigits: 0}})}} €</span>`;
 }}
 function fmtPercent(v, base) {{
   if (v === null || v === undefined || !base) return '';
-  return `<span class="delta-pct">${{(v / base * 100).toFixed(1)}}%</span>`;
+  return `<span class="delta-pct">(${{(v / base * 100).toFixed(1)}}%)</span>`;
 }}
 
 /* viewport fix tik tikram mobiliajam */
@@ -784,7 +804,7 @@ if (window.matchMedia('(max-width: 767px)').matches) {{
         responsive: true, maintainAspectRatio: false,
         plugins: {{
           legend: {{ display: false }},
-          tooltip: {{ callbacks: {{ label: c => ' ' + c.raw.toLocaleString('lt-LT', {{minimumFractionDigits: 2}}) + ' €' }} }}
+          tooltip: {{ callbacks: {{ label: c => ' ' + c.raw.toLocaleString('lt-LT', {{minimumFractionDigits: 0, maximumFractionDigits: 0}}) + ' €' }} }}
         }},
         scales: {{ y: {{ beginAtZero: true, ticks: {{ callback: v => v.toLocaleString('lt-LT') + ' €' }} }} }}
       }}
@@ -941,7 +961,7 @@ if (window.matchMedia('(max-width: 767px)').matches) {{
         responsive: true, maintainAspectRatio: false,
         plugins: {{
           legend: {{ display: false }},
-          tooltip: {{ callbacks: {{ label: c => ' ' + c.raw.toLocaleString('lt-LT', {{minimumFractionDigits: 2}}) + ' €' }} }}
+          tooltip: {{ callbacks: {{ label: c => ' ' + c.raw.toLocaleString('lt-LT', {{minimumFractionDigits: 0, maximumFractionDigits: 0}}) + ' €' }} }}
         }},
         scales: {{
           y: {{ beginAtZero: true, ticks: {{ callback: v => v.toLocaleString('lt-LT') + ' €', maxTicksLimit: 6, font: {{size: 11}} }} }},
@@ -970,6 +990,79 @@ if (window.matchMedia('(max-width: 767px)').matches) {{
     log.info(f"Sugeneruota {HTML_FILE} su {n} unikaliais nariais (desktop + mobile)")
 
 
+def display_url_to_static(url: str) -> str:
+    if "srcUrl=" in url:
+        src = parse_qs(url.split("?", 1)[-1]).get("srcUrl", [""])[0]
+        return static_url(src) if src else url
+    return url
+
+
+def parse_name_from_declaration(html: str) -> str:
+    soup = BeautifulSoup(html, "html.parser")
+    SKIP = re.compile(
+        r'^(METINĖS|I\.|II\.|III\.|IV\.|V\.|GPM|Gautų|Išskaičiuota'
+        r'|Vienmandatė|Iškėlė|Turas|Sąrašas|Numeris|Porinkiminis'
+        r'|Apygarda|Kandidatai|\d)', re.I
+    )
+    def clean(s: str) -> str:
+        return re.sub(r'\s+', ' ', s.replace('\xa0', ' ')).strip()
+
+    for tr in soup.find_all('tr')[:6]:
+        for td in tr.find_all(['td', 'th']):
+            # 2016 format: vardas yra pirmasis teksto mazgas prieš <b>
+            for child in td.children:
+                if isinstance(child, NavigableString):
+                    name = clean(str(child))
+                    if name and len(name) > 3 and not SKIP.match(name):
+                        return name
+                    break
+            # 2008 format: vardas yra pirmame <b> vaikiniame elemente
+            b = td.find('b', recursive=False)
+            if b:
+                name = clean(b.get_text(strip=True))
+                if name and len(name) > 3 and not SKIP.match(name):
+                    return name
+    return "Nežinomas narys"
+
+
+def scrape_manual_members(conn: sqlite3.Connection):
+    for year, urls in MANUAL_MEMBERS.items():
+        row = conn.execute("SELECT id FROM elections WHERE year=?", (year,)).fetchone()
+        if not row:
+            log.warning(f"Rinkimų {year} nėra DB – praleista")
+            continue
+        election_id = row[0]
+        currency = ELECTIONS[year]["currency"]
+
+        for display_url in urls:
+            static = display_url_to_static(display_url)
+            existing = conn.execute(
+                "SELECT id FROM members WHERE election_id=? AND anketa_url=?",
+                (election_id, static)
+            ).fetchone()
+            if existing and already_scraped(conn, existing[0]):
+                log.debug(f"  [{year}] {static} – jau yra DB")
+                continue
+
+            log.info(f"  Papildomas narys [{year}]: {static}")
+            html = fetch(static)
+            if not html:
+                log.warning(f"  Nepavyko gauti: {static}")
+                continue
+
+            name = parse_name_from_declaration(html)
+            log.info(f"    Vardas: {name}")
+
+            member_id = upsert_member(conn, election_id, MemberInfo(
+                name=name, anketa_url=static, turto_url=static,
+                district_name="", district_url=None,
+                party_name="", party_url=None,
+            ))
+            if member_id:
+                save_declaration(conn, member_id, parse_declaration(html, static, currency))
+            time.sleep(REQUEST_DELAY)
+
+
 def main():
     conn = sqlite3.connect(DB_FILE)
     conn.execute("PRAGMA journal_mode=WAL")
@@ -981,6 +1074,7 @@ def main():
         except Exception as e:
             log.error(f"Klaida {year}: {e}", exc_info=True)
 
+    scrape_manual_members(conn)
     generate_html(conn)
     conn.close()
     log.info("Baigta.")
