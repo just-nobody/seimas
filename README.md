@@ -7,7 +7,7 @@
 
 1. Iš [vrk.lt](https://www.vrk.lt) svetainės surenka duomenis apie visus išrinktus Seimo narius per penkis rinkimų ciklus nuo 2008 iki 2024.
 2. Išsaugo duomenis į SQLite duomenų bazę `seimas.db`
-3. Sugeneruoja statinį interaktyvų HTML failą `index.html` su visais duomenimis
+3. Sugeneruoja statinį interaktyvų HTML failą [`index.html`](https://github.com/just-nobody/seimas) su visais duomenimis
 
 ## Rezultatas
 
