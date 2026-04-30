@@ -1,6 +1,7 @@
 # Seimo narių turto deklaracijos 2008–2024
 
 Įrankis, kuris surenka Lietuvos Seimo narių turto ir pajamų deklaracijų duomenis iš VRK svetainės ir sugeneruoja interaktyvų HTML puslapį jų peržiūrai.
+Arba galite peržiūrėti duomenis tiesiog čia: [Seimas 2008-2024](https://just-nobody.github.io/seimas/)
 
 ## Ką daro
 
