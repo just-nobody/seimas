@@ -1,17 +1,17 @@
 # Seimo narių turto deklaracijos 2008–2024
 
 Įrankis, kuris surenka Lietuvos Seimo narių turto ir pajamų deklaracijų duomenis iš VRK svetainės ir sugeneruoja interaktyvų HTML puslapį jų peržiūrai.
-Arba galite peržiūrėti duomenis tiesiog čia: [Seimas 2008-2024](https://just-nobody.github.io/seimas/)
+
 
 ## Ką daro
 
 1. Iš [vrk.lt](https://www.vrk.lt) svetainės surenka duomenis apie visus išrinktus Seimo narius per penkis rinkimų ciklus nuo 2008 iki 2024.
 2. Išsaugo duomenis į SQLite duomenų bazę `seimas.db`
-3. Sugeneruoja statinį interaktyvų HTML failą `seimas2008-2024.html` su visais duomenimis
+3. Sugeneruoja statinį interaktyvų HTML failą `index.html` su visais duomenimis
 
 ## Rezultatas
 
-Failas `seimas2008-2024.html` - pilnai statinis, veikia be serverio ar interneto ryšio. Jame:
+Failas `index.html` - pilnai statinis, veikia be serverio ar interneto ryšio. Jame:
 
 - **409 unikalių Seimo narių** sąrašas su paieška ir rūšiavimu
 - Kiekvieno nario turto ir pajamų deklaracijos per visas kadencijas vienoje lentelėje
@@ -41,16 +41,15 @@ python seimas2008-2024.py
 
 Duomenų surinkimas ir generavimas gali užtrukti iki 10 minučių.
 
-Po paleidimo atsidaryti `seimas2008-2024.html` naršyklėje.
+Po paleidimo atsidaryti `index.html` naršyklėje.
 
 ## Failai
 
 | Failas | Paskirtis |
 |--------|-----------|
 | `seimas2008-2024.py` | Pagrindinis skriptas: duomenų surinkimas + HTML generavimas |
-| `seimas2008-2024.html` | Sugeneruotas interaktyvus puslapis |
-| `seimas.db` | SQLite duomenų bazė (sukuriama automatiškai) |
 | `requirements.txt` | Python priklausomybių sąrašas |
+| `index.html` | Sugeneruotas interaktyvus puslapis |
 
 ## Duomenų šaltinis
 
